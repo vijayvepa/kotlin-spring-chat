@@ -11,7 +11,7 @@ class FakeMessageService : MessageService {
 
     val users: Map<String, UserVM> = mapOf(
         "Shakespeare"  to UserVM("Shakespeare", URL("https://blog.12min.com/wp-content/uploads/2018/05/27d-William-Shakespeare.jpg")),
-        "RickAndMorty" to UserVM("RickAndMorty", URL("http://thecircular.org/wp-content/uploads/2015/04/rick-and-morty-fb-pic1.jpg")),
+        "RickAndMorty" to UserVM("RickAndMorty", URL("https://a.media-amazon.com/images/I/51JEhqmBwyL._SY445_SX342_.jpg")),
         "Yoda"         to UserVM("Yoda", URL("https://news.toyark.com/wp-content/uploads/sites/4/2019/03/SH-Figuarts-Yoda-001.jpg"))
     )
 
