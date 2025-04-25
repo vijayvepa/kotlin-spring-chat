@@ -14,6 +14,7 @@ import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.client.TestRestTemplate
+import org.springframework.boot.test.web.client.postForEntity
 import org.springframework.core.ParameterizedTypeReference
 import org.springframework.http.HttpMethod
 import org.springframework.http.RequestEntity
@@ -98,5 +99,32 @@ class ChatKotlinApplicationTests {
 			)
 	}
 
+	@Test
+	fun `test that messages posted to the api is stored`() {
+		client. postForEntity<Any>(
+			URI("http://test.com"),
+			MessageVM(
+                content = "HelloWorld",
+                user = UserVM("user", URL("http://test.com")),
+                sent = now.plusSeconds(1)
+            )
+
+		)
+
+		messageRepository.findAll()
+			.first{it.content.contains("HelloWorld")}
+			.apply { assertThat (this.copy(id=null, sent=sent.truncatedTo(ChronoUnit.MILLIS)))
+				.isEqualTo(
+					Message(
+						"HelloWorld",
+						ContentType.PLAIN,
+						now.plusSeconds(1).truncatedTo(ChronoUnit.MILLIS),
+						"test",
+						"http://test.com"
+
+					)
+				)
+			}
+	}
 
 }
