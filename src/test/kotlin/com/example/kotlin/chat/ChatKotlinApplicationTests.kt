@@ -67,7 +67,6 @@ class ChatKotlinApplicationTests (
 
     }
 
-    @OptIn(InternalCoroutinesApi::class)
     @ExperimentalTime
     @ExperimentalCoroutinesApi
     @Test
