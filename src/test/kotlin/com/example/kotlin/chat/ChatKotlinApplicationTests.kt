@@ -1,53 +1,44 @@
 package com.example.kotlin.chat
 
-import com.example.kotlin.chat.common.asDomainObject
-import com.example.kotlin.chat.common.asViewModel
+import app.cash.turbine.test
 import com.example.kotlin.chat.repository.ContentType
 import com.example.kotlin.chat.repository.Message
 import com.example.kotlin.chat.repository.MessageRepository
 import com.example.kotlin.chat.service.MessageVM
 import com.example.kotlin.chat.service.UserVM
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.flow.flow
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.params.ParameterizedTest
-import org.junit.jupiter.params.provider.ValueSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.test.web.client.TestRestTemplate
-import org.springframework.boot.test.web.client.postForEntity
-import org.springframework.core.ParameterizedTypeReference
-import org.springframework.http.HttpMethod
-import org.springframework.http.RequestEntity
+import org.springframework.boot.web.server.LocalServerPort
+import org.springframework.messaging.rsocket.RSocketRequester
+import org.springframework.messaging.rsocket.dataWithType
+import org.springframework.messaging.rsocket.retrieveFlow
 import java.net.URI
 import java.net.URL
 import java.time.Instant
+import java.time.temporal.ChronoUnit
+import kotlin.time.ExperimentalTime
+import kotlin.time.seconds
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = [
         "spring.datasource.url=jdbc:h2:mem:testdb"
     ]
 )
-class ChatKotlinApplicationTests {
+class ChatKotlinApplicationTests (
+    @Autowired val rsocketBuilder: RSocketRequester.Builder,
+    @Autowired val messageRepository: MessageRepository,
+    @LocalServerPort val serverPort: Int
+) {
 
-    @Autowired
-    lateinit var client: TestRestTemplate
-
-    @Autowired
-    lateinit var messageRepository: MessageRepository
-
-    lateinit var lastMessageId: String
-
-    val now: Instant = Instant.now()
-
-
-    @Test
-    fun contextLoads() {
-    }
-
+    private final val now = Instant.now()
     private final val secondBeforeNow: Instant = now.minusSeconds(1)
     private final val twoSecondsBeforeNow: Instant = now.minusSeconds(2)
     private final val messageList = listOf(
@@ -59,10 +50,7 @@ class ChatKotlinApplicationTests {
     fun setup() {
 
         runBlocking {
-
             val savedMessages = messageRepository.saveAll(messageList)
-
-            lastMessageId = savedMessages.first().id ?: ""
         }
 
     }
@@ -74,48 +62,94 @@ class ChatKotlinApplicationTests {
         }
     }
 
+    @Test
+    fun contextLoads() {
 
-    @ParameterizedTest
-    @ValueSource(booleans = [true, false])
-    fun `test that messages API returns latest messages`(withLastMessageId: Boolean) {
+    }
+
+    @OptIn(InternalCoroutinesApi::class)
+    @ExperimentalTime
+    @ExperimentalCoroutinesApi
+    @Test
+    fun `test that messages API streams latest messages`() {
         runBlocking {
-            val messages: List<MessageVM>? = client.exchange(
-                RequestEntity<Any>(
-                    HttpMethod.GET,
-                    URI("/api/v1/messages?lastMessageId=${if (withLastMessageId) lastMessageId else ""}"),
-                ),
-                object : ParameterizedTypeReference<List<MessageVM>>() {}
-            ).body
+            val rSocketRequester =
+                rsocketBuilder.websocket(URI("ws://localhost:${serverPort}/rsocket"))
 
-            if (!withLastMessageId) {
-                assertThat(messages?.map { it.forTesting() })
-                    .first().isEqualTo(messageList.first().asViewModel().forTesting())
-            }
+            rSocketRequester
+                .route("api.v1.messages.stream")
+                .retrieveFlow<MessageVM>()
+                .test {
 
-            assertThat(messages?.map { it.forTesting() })
-                .containsSubsequence(messageList.last().asViewModel().forTesting())
+
+                    expectNoEvents()
+
+                    launch {
+                        rSocketRequester.route("api.v1.messages.stream")
+                            .dataWithType(flow {
+                                emit(
+                                    MessageVM(
+                                        "`HelloWorld`",
+                                        UserVM("test", URL("http://test.com")),
+                                        now.plusSeconds(1)
+                                    )
+                                )
+                            })
+                            .retrieveFlow<Void>()
+                            .collect()
+                    }
+
+                    assertThat(expectItem().forTesting())
+                        .isEqualTo(
+                            MessageVM(
+                                "<body><p><code>HelloWorld</code></p></body>",
+                                UserVM("test", URL("http://test.com")),
+                                now.plusSeconds(1).truncatedTo(ChronoUnit.MILLIS)
+                            )
+                        )
+
+                    cancelAndIgnoreRemainingEvents()
+                }
         }
     }
 
+    @ExperimentalTime
     @Test
-    fun `test that messages posted to the api is stored`() {
+    fun `test that messages streamed to the API is stored`() {
         runBlocking {
-            val messageVM = MessageVM(
-                content = "HelloWorld",
-                user = UserVM("user", URL("http://test.com")),
-                sent = now.plusSeconds(1)
-            )
-            client.postForEntity<Any>(
-                URI("/api/v1/messages"),
-                messageVM.forTesting()
+            launch {
+                val rSocketRequester =
+                    rsocketBuilder.websocket(URI("ws://localhost:${serverPort}/rsocket"))
 
-            )
+                rSocketRequester.route("api.v1.messages.stream")
+                    .dataWithType(flow {
+                        emit(
+                            MessageVM(
+                                "`HelloWorld`",
+                                UserVM("test", URL("http://test.com")),
+                                now.plusSeconds(1)
+                            )
+                        )
+                    })
+                    .retrieveFlow<Void>()
+                    .collect()
+            }
+
+            delay(2.seconds)
 
             messageRepository.findAll()
                 .first { it.content.contains("HelloWorld") }
                 .apply {
                     assertThat(this.forTesting())
-                        .isEqualTo(messageVM.asDomainObject().forTesting())
+                        .isEqualTo(
+                            Message(
+                                "`HelloWorld`",
+                                ContentType.PLAIN,
+                                now.plusSeconds(1).truncatedTo(ChronoUnit.MILLIS),
+                                "test",
+                                "http://test.com"
+                            )
+                        )
                 }
         }
     }

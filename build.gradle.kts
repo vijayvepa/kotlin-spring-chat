@@ -43,7 +43,7 @@ dependencies {
 	}
 
 
-	testImplementation("app.cash.turbine:turbine:0.4.1")
+	testImplementation("app.cash.turbine:turbine:0.4.0")
 
 }
 
