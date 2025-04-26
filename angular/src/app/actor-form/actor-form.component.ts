@@ -25,6 +25,11 @@ export class ActorFormComponent implements OnInit {
 		this.submitted = true;
 	}
 
+	newActor() {
+		this.model = new Actor(1, '', '', 'Bollywood');
+		this.submitted = false;
+	}
+
 	
 
 }

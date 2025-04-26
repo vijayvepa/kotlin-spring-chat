@@ -1,21 +1,40 @@
 <p>actor-form works!</p>
 
+<div [hidden]="submitted">
+	<h1>Actor Form</h1>
 
-<form #actorForm="ngForm">
-{{model | json}}
+<form #actorForm="ngForm" (ngSubmit)="onSubmit()">
+	{{model | json}}
 	<div class="form-group">
 
 		<label for="name">Name</label>
-		<input type="text" class="form-control" id="name" required [(ngModel)]="model.name" name="name">
+		<input type="text" class="form-control" id="name" required [(ngModel)]="model.name" name="name"
+			#name="ngModel" />
 		<div>TODO: remove this: {{model.name}}</div>
+		<div [hidden]="name.valid || name.pristine" class="alert alert-danger" role="alert">
+			Name is required
+		</div>
 
 		<label for="skill">Skill</label>
-		<select class="form-control" id="skill" required>
+		<select class="form-control" id="skill" name="skill" [(ngModel)]="model.skill" required>
 			@for(skill of skills; track $index) {
 			<option [value]="skill">{{skill}}</option>
 			}
 
 		</select>
 
+		<button type="button" class="btn btn-default" (click)="newActor()">New Actor</button>
+
+		<button type="submit" class="btn btn-primary" [disabled]="!actorForm.form.valid" >Add Actor</button>
 	</div>
 </form>
+
+</div>
+
+<div [hidden]="!submitted">
+	<h1>Actor Form</h1>
+	<div class="alert alert-success" role="alert">
+		{{model.name}} was added to the list of actors!
+	</div>
+	<button type="button" class="btn btn-default" (click)="newActor();actorForm.reset();">New Actor</button>
+</div>
