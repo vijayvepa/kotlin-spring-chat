@@ -34,11 +34,17 @@ dependencies {
 	implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactive")
 	implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
 
+	implementation("org.springframework.boot:spring-boot-starter-rsocket")
+
 	implementation("io.r2dbc:r2dbc-h2")
 
 	testImplementation("org.springframework.boot:spring-boot-starter-test") {
 		exclude(group = "org.junit.vintage", module = "junit-vintage-engine")
 	}
+
+
+	testImplementation("app.cash.turbine:turbine:0.4.1")
+
 }
 
 tasks.withType<Test> {

@@ -4,6 +4,8 @@ import com.example.kotlin.chat.repository.ContentType
 import com.example.kotlin.chat.repository.Message
 import com.example.kotlin.chat.service.MessageVM
 import com.example.kotlin.chat.service.UserVM
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import org.intellij.markdown.flavours.commonmark.CommonMarkFlavourDescriptor
 import org.intellij.markdown.html.HtmlGenerator
 import org.intellij.markdown.parser.MarkdownParser
@@ -23,15 +25,15 @@ fun Message.asViewModel(): MessageVM =
     MessageVM(
         content = contentType.render(content),
         user = UserVM(username, URL(userAvatarImageLink)),
-        sent = sent ,
+        sent = sent,
         id = id
     )
 
-fun List<Message>.asViewModels(): List<MessageVM> =
-    map {it.asViewModel()}
+fun Flow<Message>.asViewModels(): Flow<MessageVM> =
+    map { it.asViewModel() }
 
 fun ContentType.render(content: String): String =
-    when(this) {
+    when (this) {
         ContentType.PLAIN -> content
         ContentType.MARKDOWN -> {
             val flavor = CommonMarkFlavourDescriptor()

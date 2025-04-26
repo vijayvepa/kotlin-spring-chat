@@ -1,5 +1,6 @@
 package com.example.kotlin.chat.repository
 
+import kotlinx.coroutines.flow.Flow
 import org.springframework.data.r2dbc.repository.Query
 import org.springframework.data.repository.kotlin.CoroutineCrudRepository
 import org.springframework.data.repository.query.Param
@@ -7,20 +8,24 @@ import org.springframework.data.repository.query.Param
 interface MessageRepository : CoroutineCrudRepository<Message, String> {
 
     //language=SQL
-    @Query("""
+    @Query(
+        """
         SELECT * FROM (
             SELECT * FROM MESSAGES ORDER BY "SENT" DESC LIMIT 10
         ) ORDER BY "SENT"
-    """)
-    suspend fun findLatest(): List<Message>;
+    """
+    )
+    fun findLatest(): Flow<Message>;
 
     //language=SQL
-    @Query("""
+    @Query(
+        """
         SELECT * FROM (
             SELECT * FROM MESSAGES 
             WHERE SENT > (SELECT SENT FROM MESSAGES WHERE ID = :id)
             ORDER BY "SENT" DESC
         ) ORDER BY "SENT"
-    """)
-    suspend fun findLatest(@Param("id") id: String): List<Message>;
+    """
+    )
+    fun findLatest(@Param("id") id: String): Flow<Message>;
 }
