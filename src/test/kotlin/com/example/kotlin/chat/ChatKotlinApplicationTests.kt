@@ -53,7 +53,7 @@ class ChatKotlinApplicationTests {
 
 		val savedMessages = messageRepository.saveAll(listOf(
 			Message("testMessage1", ContentType.PLAIN, twoSecondsBeforeNow, "test", "http://test.com"),
-			Message("testMessage2", ContentType.PLAIN, secondBeforeNow, "test", "http://test.com"),
+			Message("testMessage2", ContentType.MARKDOWN, secondBeforeNow, "test", "http://test.com"),
 		))
 
 		lastMessageId = savedMessages.first().id ?: ""
@@ -91,7 +91,7 @@ class ChatKotlinApplicationTests {
 
 		assertThat ( messages?.map { it.forTesting()})
 			.containsSubsequence(MessageVM(
-                    content = "testMessage2",
+                    content = "testMessage2".asTestMarkDown(),
                     user = UserVM("test", URL("http://test.com")),
                     sent = now.minusSeconds(1).truncatedTo(ChronoUnit.MILLIS)
 

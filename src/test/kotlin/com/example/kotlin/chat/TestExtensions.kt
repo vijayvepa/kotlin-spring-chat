@@ -9,3 +9,6 @@ fun MessageVM.forTesting() =
 
 fun Message.forTesting() =
     copy(id= null, sent =  sent.truncatedTo(ChronoUnit.MILLIS))
+
+fun String.asTestMarkDown() =
+    "<body><p>${this}</p></body>"
