@@ -7,6 +7,8 @@ import com.example.kotlin.chat.repository.Message
 import com.example.kotlin.chat.repository.MessageRepository
 import com.example.kotlin.chat.service.MessageVM
 import com.example.kotlin.chat.service.UserVM
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -23,7 +25,6 @@ import org.springframework.http.RequestEntity
 import java.net.URI
 import java.net.URL
 import java.time.Instant
-import java.time.temporal.ChronoUnit
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = [
@@ -57,58 +58,66 @@ class ChatKotlinApplicationTests {
     @BeforeEach
     fun setup() {
 
+        runBlocking {
 
-        val savedMessages = messageRepository.saveAll(messageList)
+            val savedMessages = messageRepository.saveAll(messageList)
 
-        lastMessageId = savedMessages.first().id ?: ""
+            lastMessageId = savedMessages.first().id ?: ""
+        }
 
     }
 
     @AfterEach
     fun teardown() {
-        messageRepository.deleteAll()
+        runBlocking {
+            messageRepository.deleteAll()
+        }
     }
 
 
     @ParameterizedTest
     @ValueSource(booleans = [true, false])
     fun `test that messages API returns latest messages`(withLastMessageId: Boolean) {
-        val messages: List<MessageVM>? = client.exchange(
-            RequestEntity<Any>(
-                HttpMethod.GET,
-                URI("/api/v1/messages?lastMessageId=${if (withLastMessageId) lastMessageId else ""}"),
-            ),
-            object : ParameterizedTypeReference<List<MessageVM>>() {}
-        ).body
+        runBlocking {
+            val messages: List<MessageVM>? = client.exchange(
+                RequestEntity<Any>(
+                    HttpMethod.GET,
+                    URI("/api/v1/messages?lastMessageId=${if (withLastMessageId) lastMessageId else ""}"),
+                ),
+                object : ParameterizedTypeReference<List<MessageVM>>() {}
+            ).body
 
-        if (!withLastMessageId) {
+            if (!withLastMessageId) {
+                assertThat(messages?.map { it.forTesting() })
+                    .first().isEqualTo(messageList.first().asViewModel().forTesting())
+            }
+
             assertThat(messages?.map { it.forTesting() })
-                .first().isEqualTo(messageList.first().asViewModel().forTesting())
+                .containsSubsequence(messageList.last().asViewModel().forTesting())
         }
-
-        assertThat(messages?.map { it.forTesting() })
-            .containsSubsequence(messageList.last().asViewModel().forTesting())
     }
 
     @Test
     fun `test that messages posted to the api is stored`() {
-        val messageVM = MessageVM(
-            content = "HelloWorld",
-            user = UserVM("user", URL("http://test.com")),
-            sent = now.plusSeconds(1)
-        )
-        client.postForEntity<Any>(
-            URI("/api/v1/messages"),
-            messageVM.forTesting()
+        runBlocking {
+            val messageVM = MessageVM(
+                content = "HelloWorld",
+                user = UserVM("user", URL("http://test.com")),
+                sent = now.plusSeconds(1)
+            )
+            client.postForEntity<Any>(
+                URI("/api/v1/messages"),
+                messageVM.forTesting()
 
-        )
+            )
 
-        messageRepository.findAll()
-            .first { it.content.contains("HelloWorld") }
-            .apply {
-                assertThat(this.forTesting())
-                    .isEqualTo(messageVM.asDomainObject().forTesting())
-            }
+            messageRepository.findAll()
+                .first { it.content.contains("HelloWorld") }
+                .apply {
+                    assertThat(this.forTesting())
+                        .isEqualTo(messageVM.asDomainObject().forTesting())
+                }
+        }
     }
 
 }
