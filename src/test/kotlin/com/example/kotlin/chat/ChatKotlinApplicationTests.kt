@@ -1,6 +1,7 @@
 package com.example.kotlin.chat
 
 import app.cash.turbine.test
+import com.example.kotlin.chat.common.asViewModel
 import com.example.kotlin.chat.repository.ContentType
 import com.example.kotlin.chat.repository.Message
 import com.example.kotlin.chat.repository.MessageRepository
@@ -10,6 +11,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.toList
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -29,7 +31,7 @@ import kotlin.time.seconds
 
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = [
-        "spring.datasource.url=jdbc:h2:mem:testdb"
+        "spring.r2dbc.url=r2dbc:h2:mem:///testdb;USER=sa;PASSWORD=password"
     ]
 )
 class ChatKotlinApplicationTests (
@@ -50,7 +52,7 @@ class ChatKotlinApplicationTests (
     fun setup() {
 
         runBlocking {
-            val savedMessages = messageRepository.saveAll(messageList)
+            val savedMessages = messageRepository.saveAll(messageList).toList()
         }
 
     }
@@ -80,6 +82,11 @@ class ChatKotlinApplicationTests (
                 .retrieveFlow<MessageVM>()
                 .test {
 
+                    assertThat (expectItem().forTesting())
+                        .isEqualTo(messageList[0].asViewModel().forTesting())
+
+                    assertThat (expectItem().forTesting())
+                        .isEqualTo(messageList[1].asViewModel().forTesting())
 
                     expectNoEvents()
 
