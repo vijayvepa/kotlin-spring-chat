@@ -28,6 +28,7 @@ dependencies {
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 	implementation("org.springframework.boot:spring-boot-starter-data-jdbc")
+	implementation("org.jetbrains:markdown:0.2.2")
 
 	runtimeOnly("com.h2database:h2")
 

@@ -4,6 +4,9 @@ import com.example.kotlin.chat.repository.ContentType
 import com.example.kotlin.chat.repository.Message
 import com.example.kotlin.chat.service.MessageVM
 import com.example.kotlin.chat.service.UserVM
+import org.intellij.markdown.flavours.commonmark.CommonMarkFlavourDescriptor
+import org.intellij.markdown.html.HtmlGenerator
+import org.intellij.markdown.parser.MarkdownParser
 import java.net.URL
 
 fun MessageVM.asDomainObject(contentType: ContentType = ContentType.PLAIN) =
@@ -18,7 +21,7 @@ fun MessageVM.asDomainObject(contentType: ContentType = ContentType.PLAIN) =
 
 fun Message.asViewModel(): MessageVM =
     MessageVM(
-        content = content ,
+        content = contentType.render(content),
         user = UserVM(username, URL(userAvatarImageLink)),
         sent = sent ,
         id = id
@@ -26,3 +29,17 @@ fun Message.asViewModel(): MessageVM =
 
 fun List<Message>.asViewModels(): List<MessageVM> =
     map {it.asViewModel()}
+
+fun ContentType.render(content: String): String =
+    when(this) {
+        ContentType.PLAIN -> content
+        ContentType.MARKDOWN -> {
+            val flavor = CommonMarkFlavourDescriptor()
+            HtmlGenerator(
+                markdownText = content,
+                root = MarkdownParser(flavor).buildMarkdownTreeFromString(content),
+                flavour = flavor
+            ).generateHtml()
+        }
+    }
+

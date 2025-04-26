@@ -5,7 +5,8 @@ import org.springframework.data.relational.core.mapping.Table
 import java.time.Instant
 
 enum class ContentType {
-    PLAIN
+    PLAIN,
+    MARKDOWN
 }
 
 @Table("MESSAGES")

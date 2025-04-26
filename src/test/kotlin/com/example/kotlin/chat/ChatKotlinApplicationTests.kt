@@ -78,7 +78,7 @@ class ChatKotlinApplicationTests {
 		).body
 
 		if(!withLastMessageId) {
-			assertThat(messages?.map { with(it){ copy(id=null, sent = sent.truncatedTo(ChronoUnit.MILLIS))} })
+			assertThat(messages?.map { it.forTesting()})
 				.first().isEqualTo(MessageVM(
                     "testMessage1",
                     UserVM(
@@ -89,7 +89,7 @@ class ChatKotlinApplicationTests {
                 ))
 		}
 
-		assertThat ( messages?.map { with(it){copy(id=null, sent = sent.truncatedTo(ChronoUnit.MILLIS)) } })
+		assertThat ( messages?.map { it.forTesting()})
 			.containsSubsequence(MessageVM(
                     content = "testMessage2",
                     user = UserVM("test", URL("http://test.com")),
@@ -102,7 +102,7 @@ class ChatKotlinApplicationTests {
 	@Test
 	fun `test that messages posted to the api is stored`() {
 		client. postForEntity<Any>(
-			URI("http://test.com"),
+			URI("/api/v1/messages"),
 			MessageVM(
                 content = "HelloWorld",
                 user = UserVM("user", URL("http://test.com")),
@@ -113,13 +113,13 @@ class ChatKotlinApplicationTests {
 
 		messageRepository.findAll()
 			.first{it.content.contains("HelloWorld")}
-			.apply { assertThat (this.copy(id=null, sent=sent.truncatedTo(ChronoUnit.MILLIS)))
+			.apply { assertThat (this.forTesting())
 				.isEqualTo(
 					Message(
 						"HelloWorld",
 						ContentType.PLAIN,
 						now.plusSeconds(1).truncatedTo(ChronoUnit.MILLIS),
-						"test",
+						"user",
 						"http://test.com"
 
 					)
